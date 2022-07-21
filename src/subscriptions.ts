@@ -7,7 +7,7 @@ import {
   OperationTypeNode,
 } from 'graphql';
 import { v4 as uuid } from 'uuid';
-import { fetch } from 'cross-undici-fetch';
+import { fetch } from '@whatwg-node/fetch';
 import { buildOperationNodeForField } from '@graphql-tools/utils';
 import type { ContextValue } from './types';
 import type { Sofa } from './sofa';

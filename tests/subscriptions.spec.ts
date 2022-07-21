@@ -1,15 +1,17 @@
-jest.mock('cross-undici-fetch', () => ({
-  fetch: jest.fn().mockResolvedValue(({
-    text: () => ({})
-  })),
-}));
+jest.mock("@whatwg-node/fetch", () => {
+  const original = jest.requireActual("@whatwg-node/fetch"); // Step 2.
+  return {
+    ...original,
+    fetch: jest.fn().mockResolvedValue(({
+      text: () => ({})
+    })),
+  };
+});
 
-import { fetch } from 'cross-undici-fetch';
+import { fetch } from '@whatwg-node/fetch';
 import { makeExecutableSchema } from '@graphql-tools/schema';
 import { PubSub } from 'graphql-subscriptions';
 import supertest from 'supertest';
-import express from 'express';
-import bodyParser from 'body-parser';
 import { useSofa } from '../src';
 
 const delay = (ms: number) => {
@@ -57,11 +59,7 @@ test('should start subscriptions', async () => {
     }),
   });
 
-  const app = express();
-  app.use(bodyParser.json());
-  app.use('/api', sofa);
-
-  const res = await supertest(app)
+  const res = await supertest(sofa)
     .post('/api/webhook')
     .send({ subscription: 'onBook', url: '/book' })
     .expect(200);
@@ -111,18 +109,14 @@ test('should stop subscriptions', async () => {
     }),
   });
 
-  const app = express();
-  app.use(bodyParser.json());
-  app.use('/api', sofa);
-
-  const res = await supertest(app)
+  const res = await supertest(sofa)
     .post('/api/webhook')
     .send({ subscription: 'onBook', url: '/book' })
     .expect(200);
   pubsub.publish(BOOK_ADDED, { onBook: testBook1 });
   await delay(1000);
   expect(fetch).toBeCalledTimes(1);
-  await supertest(app).delete(`/api/webhook/${res.body.id}`).expect(200);
+  await supertest(sofa).delete(`/api/webhook/${res.body.id}`).expect(200);
   pubsub.publish(BOOK_ADDED, { onBook: testBook2 });
   await delay(1000);
   expect(fetch).toBeCalledTimes(1);

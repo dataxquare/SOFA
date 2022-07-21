@@ -1,7 +1,5 @@
 import { makeExecutableSchema } from '@graphql-tools/schema';
 import supertest from 'supertest';
-import express from 'express';
-import bodyParser from 'body-parser';
 import { useSofa } from '../src';
 
 test('should work with Query and variables', async () => {
@@ -30,11 +28,7 @@ test('should work with Query and variables', async () => {
     }),
   });
 
-  const app = express();
-  app.use(bodyParser.json());
-  app.use('/api', sofa);
-
-  const res = await supertest(app).get('/api/user/test-id').expect(200);
+  const res = await supertest(sofa).get('/api/user/test-id').expect(200);
   expect(res.body).toEqual(testUser);
   expect((spy.mock.calls[0] as any[])[1]).toEqual({ id: 'test-id' });
 });
@@ -69,11 +63,7 @@ test('should work with Mutation', async () => {
     }),
   });
 
-  const app = express();
-  app.use(bodyParser.json());
-  app.use('/api', sofa);
-
-  const res = await supertest(app).post('/api/add-random-food').expect(200);
+  const res = await supertest(sofa).post('/api/add-random-food').expect(200);
   expect(res.body).toEqual(pizza);
   expect((spy.mock.calls[0] as any[])[1]).toEqual({});
 });
@@ -111,11 +101,7 @@ test('should work with Mutation + Query', async () => {
     }),
   });
 
-  const app = express();
-  app.use(bodyParser.json());
-  app.use('/api', sofa);
-
-  const res = await supertest(app).post('/api/add-random-food?name=test').expect(200);
+  const res = await supertest(sofa).post('/api/add-random-food?name=test').expect(200);
   expect(res.body).toEqual(pizza);
   expect((spy.mock.calls[0] as any[])[1]).toEqual({ name: "test" });
 });
@@ -168,24 +154,20 @@ test('should overwrite a default http method on demand', async () => {
     },
   });
 
-  const app = express();
-  app.use(bodyParser.json());
-  app.use('/api', sofa);
-
   const params = {
     pageInfo: {
       limit: 5,
     },
   };
 
-  const queryRes = await supertest(app)
+  const queryRes = await supertest(sofa)
     .post('/api/users')
     .send(params)
     .expect(200);
   expect(queryRes.body).toEqual(users);
   expect((spy.mock.calls[0] as any[])[1]).toEqual(params);
 
-  const mutationRes = await supertest(app)
+  const mutationRes = await supertest(sofa)
     .get('/api/add-random-user')
     .send()
     .expect(200);
@@ -223,11 +205,7 @@ test('should overwrite a default path and responseStatus on demand', async () =>
     },
   });
 
-  const app = express();
-  app.use(bodyParser.json());
-  app.use('/api', sofa);
-
-  const queryRes = await supertest(app).get(`/api/my-users/2/5`).expect(201);
+  const queryRes = await supertest(sofa).get(`/api/my-users/2/5`).expect(201);
   expect(queryRes.body).toEqual(users);
   expect(spy).lastCalledWith(
     /* source */ undefined,
@@ -238,31 +216,25 @@ test('should overwrite a default path and responseStatus on demand', async () =>
 });
 
 test('should work with scalars', async () => {
-  const app = express();
-
-  app.use(bodyParser.json());
-  app.use(
-    '/api',
-    useSofa({
-      basePath: '/api',
-      schema: makeExecutableSchema({
-        typeDefs: /* GraphQL */ `
+  const sofa = useSofa({
+    basePath: '/api',
+    schema: makeExecutableSchema({
+      typeDefs: /* GraphQL */ `
           type Query {
             foo: String
           }
         `,
-        resolvers: {
-          Query: {
-            foo() {
-              return 'bar';
-            },
+      resolvers: {
+        Query: {
+          foo() {
+            return 'bar';
           },
         },
-      }),
-    })
-  );
+      },
+    }),
+  })
 
-  const res = await supertest(app).get('/api/foo').send().expect(200);
+  const res = await supertest(sofa).get('/api/foo').send().expect(200);
   expect(res.body).toEqual('bar');
 });
 
@@ -295,11 +267,7 @@ test('should support search params in url', async () => {
     }),
   });
 
-  const app = express();
-  app.use(bodyParser.json());
-  app.use('/api', sofa);
-
-  const res = await supertest(app).get('/api/users?count=5').expect(200);
+  const res = await supertest(sofa).get('/api/users?count=5').expect(200);
   expect(res.body).toEqual(users);
   expect(spy).lastCalledWith(
     /* source */ undefined,
