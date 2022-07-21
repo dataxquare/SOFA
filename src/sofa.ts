@@ -12,7 +12,7 @@ import {
 import { Ignore, ExecuteFn, OnRoute, Method } from './types';
 import { convertName } from './common';
 import { logger } from './logger';
-import { ErrorHandler } from './express';
+import { ErrorHandler } from './router';
 
 // user passes:
 // - schema
