@@ -56,7 +56,9 @@ test('handle query', async () => {
     },
   });
 
-  expect(result.responses[200].description).toMatch('Feed of posts');
+  expect(result.description).toMatch('Feed of posts');
+  
+  expect(result.responses[200].description).toMatch('OK');
 
   const response = result.responses[200].content['application/json'].schema;
   expect(response).toEqual({
