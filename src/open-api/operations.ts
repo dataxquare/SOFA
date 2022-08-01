@@ -27,7 +27,7 @@ export function buildPathFromOperation({
   schema: GraphQLSchema;
   operation: DocumentNode;
   useRequestBody: boolean;
-  tags?: string[]
+  tags?: string[];
 }): any {
   const info = getOperationInfo(operation)!;
 
@@ -48,7 +48,9 @@ export function buildPathFromOperation({
       : {
           parameters: resolveParameters(
             url,
-            info.operation.variableDefinitions
+            info.operation.variableDefinitions,
+            schema,
+            info.operation
           ),
         }),
     description,
@@ -71,7 +73,9 @@ export function buildPathFromOperation({
 
 function resolveParameters(
   url: string,
-  variables: ReadonlyArray<VariableDefinitionNode> | undefined
+  variables: ReadonlyArray<VariableDefinitionNode> | undefined,
+  schema: GraphQLSchema,
+  operation: OperationDefinitionNode,
 ) {
   if (!variables) {
     return [];
@@ -83,6 +87,7 @@ function resolveParameters(
       name: variable.variable.name.value,
       required: variable.type.kind === Kind.NON_NULL_TYPE,
       schema: resolveParamSchema(variable.type),
+      description: resolveVariableDescription(schema, operation, variable),
     };
   });
 }
@@ -169,7 +174,7 @@ function isInPath(url: string, param: string): boolean {
   return url.indexOf(`{${param}}`) !== -1;
 }
 
-function resolveDescription(
+function getOperationFieldNode(
   schema: GraphQLSchema,
   operation: OperationDefinitionNode
 ) {
@@ -178,23 +183,44 @@ function resolveDescription(
   const typeDefinition = schema.getType(titleCase(operation.operation));
 
   if (!typeDefinition) {
-    return '';
+    return undefined;
   }
 
   const definitionNode =
     typeDefinition.astNode || parse(printType(typeDefinition)).definitions[0];
 
   if (!isObjectTypeDefinitionNode(definitionNode)) {
-    return '';
+    return undefined;
   }
 
   const fieldNode = definitionNode.fields!.find(
     field => field.name.value === fieldName
   );
+
+  return fieldNode;
+}
+
+function resolveDescription(
+  schema: GraphQLSchema,
+  operation: OperationDefinitionNode
+) {
+  const fieldNode = getOperationFieldNode(schema, operation);
   const descriptionDefinition = fieldNode && fieldNode.description;
+
   return descriptionDefinition && descriptionDefinition.value
     ? descriptionDefinition.value
     : '';
+}
+
+function resolveVariableDescription(
+  schema: GraphQLSchema,
+  operation: OperationDefinitionNode,
+  variable: VariableDefinitionNode
+) {
+  const fieldNode = getOperationFieldNode(schema, operation);
+  const argument = fieldNode?.arguments?.find((arg) => arg.name.value === variable.variable.name.value);
+
+  return argument?.description?.value;
 }
 
 function isObjectTypeDefinitionNode(
