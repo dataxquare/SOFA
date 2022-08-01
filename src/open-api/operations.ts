@@ -51,10 +51,11 @@ export function buildPathFromOperation({
             info.operation.variableDefinitions
           ),
         }),
+    description,
     tags,
     responses: {
       200: {
-        description,
+        description: "OK",
         content: {
           'application/json': {
             schema: resolveResponse({
