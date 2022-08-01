@@ -21,11 +21,13 @@ export function buildPathFromOperation({
   schema,
   operation,
   useRequestBody,
+  tags
 }: {
   url: string;
   schema: GraphQLSchema;
   operation: DocumentNode;
   useRequestBody: boolean;
+  tags?: string[]
 }): any {
   const info = getOperationInfo(operation)!;
 
@@ -49,6 +51,7 @@ export function buildPathFromOperation({
             info.operation.variableDefinitions
           ),
         }),
+    tags,
     responses: {
       200: {
         description,
