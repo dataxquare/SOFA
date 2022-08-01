@@ -1,7 +1,7 @@
 {
-  "name": "sofa-api",
+  "name": "@dataxquare/sofa-api",
   "description": "Create REST APIs with GraphQL",
-  "version": "0.11.1",
+  "version": "1.0.0",
   "buildOptions": {
     "input": "./src/index.ts"
   },
