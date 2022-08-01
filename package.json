@@ -60,8 +60,8 @@
     "build": "bob build --single",
     "test": "jest --no-watchman",
     "prepare-release": "yarn build && yarn test",
-    "release": "yarn prepare-release && bob prepack && npm publish dist",
-    "ci:release:canary": "node bump.js && bob prepack && npm publish dist --tag alpha --access public"
+    "release": "yarn prepare-release && bob prepack && npm publish --access public",
+    "ci:release:canary": "node bump.js && bob prepack && npm publish --tag alpha --access public"
   },
   "devDependencies": {
     "@graphql-tools/schema": "8.5.1",
