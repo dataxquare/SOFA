@@ -25,6 +25,7 @@ interface RouteConfig {
   path?: string;
   responseStatus?: number;
   tags?: string[];
+  pathPrefix?: string;
 }
 
 export interface Route {
