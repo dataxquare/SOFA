@@ -43,6 +43,7 @@ test('handle query', async () => {
     },
     schema,
     useRequestBody: false,
+    customScalars: {},
   });
 
   expect(result.operationId).toEqual('feed_query');
@@ -84,6 +85,7 @@ test('handle mutation', async () => {
     },
     schema,
     useRequestBody: true,
+    customScalars: {},
   });
 
   // id

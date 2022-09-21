@@ -22,7 +22,8 @@ export function buildPathFromOperation({
   operation,
   useRequestBody,
   tags,
-  description
+  description,
+  customScalars
 }: {
   url: string;
   schema: GraphQLSchema;
@@ -30,6 +31,7 @@ export function buildPathFromOperation({
   useRequestBody: boolean;
   tags?: string[];
   description?: string;
+  customScalars: Record<string, any>;
 }): any {
   const info = getOperationInfo(operation)!;
 
@@ -65,6 +67,7 @@ export function buildPathFromOperation({
             schema: resolveResponse({
               schema,
               operation: info.operation,
+              customScalars,
             }),
           },
         },
@@ -148,9 +151,11 @@ function resolveParamSchema(type: TypeNode): any {
 function resolveResponse({
   schema,
   operation,
+  customScalars,
 }: {
   schema: GraphQLSchema;
   operation: OperationDefinitionNode;
+  customScalars: Record<string, any>;
 }) {
   const operationType = operation.operation;
   const rootField = operation.selectionSet.selections[0];
@@ -160,14 +165,14 @@ function resolveResponse({
       const queryType = schema.getQueryType()!;
       const field = queryType.getFields()[rootField.name.value];
 
-      return resolveFieldType(field.type);
+      return resolveFieldType(field.type, { customScalars });
     }
 
     if (operationType === 'mutation') {
       const mutationType = schema.getMutationType()!;
       const field = mutationType.getFields()[rootField.name.value];
 
-      return resolveFieldType(field.type);
+      return resolveFieldType(field.type, { customScalars });
     }
   }
 }
