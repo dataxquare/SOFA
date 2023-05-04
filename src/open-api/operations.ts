@@ -49,7 +49,7 @@ export function buildPathFromOperation({
 
   return {
     tags,
-    description,
+    description: description || summary,
     summary,
     operationId: info.name,
     ...(useRequestBody
