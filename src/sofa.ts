@@ -20,6 +20,8 @@ import { ErrorHandler } from './express';
 // - execute function
 // - context
 
+type ExecuteHooks = ({ contextValue }: { contextValue?: unknown }) => Promise<void>;
+
 interface RouteConfig {
   method?: Method;
   path?: string;
@@ -50,6 +52,9 @@ export interface SofaConfig {
    * Overwrites the default HTTP route.
    */
   routes?: Record<string, RouteConfig>;
+  /** Pre/Post execute hooks */
+  preExecute?: ExecuteHooks;
+  postExecute?: ExecuteHooks;
 }
 
 export interface Sofa {
@@ -62,6 +67,8 @@ export interface Sofa {
   execute: ExecuteFn;
   onRoute?: OnRoute;
   errorHandler?: ErrorHandler;
+  preExecute?: ExecuteHooks;
+  postExecute?: ExecuteHooks;
 }
 
 export function createSofa(config: SofaConfig): Sofa {

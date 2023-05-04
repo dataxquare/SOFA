@@ -313,6 +313,10 @@ function useHandler(config: {
       };
     }, {});
 
+    if(sofa.preExecute) {
+      await sofa.preExecute({ contextValue });
+    }
+
     const result = await sofa.execute({
       schema: sofa.schema,
       source: print(operation),
@@ -320,6 +324,10 @@ function useHandler(config: {
       variableValues,
       operationName: info.operation.name && info.operation.name.value,
     });
+
+    if(sofa.postExecute) {
+      await sofa.postExecute({ contextValue });
+    }
 
     if (result.errors) {
       const defaultErrorHandler: ErrorHandler = (errors) => {
