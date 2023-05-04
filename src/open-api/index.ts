@@ -82,7 +82,8 @@ export function OpenAPI({
         operation: info.document,
         schema,
         useRequestBody: ['POST', 'PUT', 'PATCH'].includes(info.method),
-        tags: info.tags
+        tags: info.tags || [],
+        description: info.description || '',
       });
     },
     get() {

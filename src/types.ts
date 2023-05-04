@@ -13,5 +13,6 @@ export interface RouteInfo {
   path: string;
   method: Method;
   tags?: string[];
+  description?: string;
 }
 export type OnRoute = (info: RouteInfo) => void;

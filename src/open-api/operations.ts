@@ -21,17 +21,19 @@ export function buildPathFromOperation({
   schema,
   operation,
   useRequestBody,
-  tags
+  tags,
+  description
 }: {
   url: string;
   schema: GraphQLSchema;
   operation: DocumentNode;
   useRequestBody: boolean;
   tags?: string[];
+  description?: string;
 }): any {
   const info = getOperationInfo(operation)!;
 
-  const description = resolveDescription(schema, info.operation);
+  const summary = resolveDescription(schema, info.operation);
 
   return {
     operationId: info.name,
@@ -53,11 +55,11 @@ export function buildPathFromOperation({
             info.operation
           ),
         }),
-    description,
+    description: description || summary,
     tags,
     responses: {
       200: {
-        description: "OK",
+        description: summary,
         content: {
           'application/json': {
             schema: resolveResponse({
