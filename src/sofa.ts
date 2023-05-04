@@ -54,6 +54,9 @@ export interface SofaConfig {
    */
   routes?: Record<string, RouteConfig>;
   context?: ContextFn | ContextValue;
+  /** Pre/Post execute hooks */
+  preExecute?: typeof execute;
+  postExecute?: typeof execute;
 }
 
 export interface Sofa {
@@ -68,6 +71,8 @@ export interface Sofa {
   onRoute?: OnRoute;
   errorHandler?: ErrorHandler;
   contextFactory: ContextFn;
+  preExecute?: typeof execute;
+  postExecute?: typeof execute;
 }
 
 export function createSofa(config: SofaConfig): Sofa {
