@@ -1,7 +1,7 @@
 {
   "name": "@dataxquare/sofa-api",
   "description": "Create REST APIs with GraphQL",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "buildOptions": {
     "input": "./src/index.ts"
   },
@@ -59,7 +59,7 @@
     "test": "jest --no-watchman",
     "prepare-release": "yarn build && yarn test",
     "release": "yarn build && npm publish --access public",
-    "postinstall": "husky install"
+    "prepare": "husky install"
   },
   "devDependencies": {
     "@changesets/changelog-github": "0.4.8",
