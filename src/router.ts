@@ -226,7 +226,7 @@ function createQueryRoute({
   const routeConfig = sofa.routes?.[graphqlPath];
   const route = {
     method: routeConfig?.method ?? 'GET',
-    path: routeConfig?.path ?? getPath(fieldName, isSingle && hasIdArgument),
+    path: routeConfig?.path ?? getPath(fieldName, isSingle && hasIdArgument, routeConfig?.pathPrefix),
     responseStatus: routeConfig?.responseStatus ?? 200,
   };
 
@@ -281,7 +281,7 @@ function createMutationRoute({
   const routeConfig = sofa.routes?.[graphqlPath];
   const route = {
     method: routeConfig?.method ?? 'POST',
-    path: routeConfig?.path ?? getPath(fieldName),
+    path: routeConfig?.path ?? getPath(fieldName, false, routeConfig?.pathPrefix),
     responseStatus: routeConfig?.responseStatus ?? 200,
   };
   const { method, path } = route;
@@ -401,8 +401,15 @@ function useHandler(config: {
   };
 }
 
-function getPath(fieldName: string, hasId = false) {
-  return `/${convertName(fieldName)}${hasId ? '/:id' : ''}`;
+function getPath(fieldName: string, hasId = false, pathPrefix = '') {
+  let prefix = pathPrefix;
+  if (!prefix.startsWith('/')) {
+    prefix = '/' + prefix;
+  }
+  if (!prefix.endsWith('/')) {
+    prefix = prefix + '/';
+  }
+  return `${prefix}${convertName(fieldName)}${hasId ? '/:id' : ''}`;
 }
 
 function pickParam({
