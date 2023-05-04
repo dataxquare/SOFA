@@ -10,10 +10,14 @@
       "description": "Development server"
     }
   ],
+  "tags": [],
   "paths": {
     "/me": {
       "get": {
-        "operationId": "meQuery",
+        "tags": [],
+        "description": "Resolves current user",
+        "summary": "Resolves current user",
+        "operationId": "me_query",
         "parameters": [],
         "responses": {
           "200": {
@@ -31,7 +35,10 @@
     },
     "/user/{id}": {
       "get": {
-        "operationId": "userQuery",
+        "tags": [],
+        "description": "",
+        "summary": "",
+        "operationId": "user_query",
         "parameters": [
           {
             "in": "path",
@@ -58,7 +65,10 @@
     },
     "/users": {
       "get": {
-        "operationId": "usersQuery",
+        "tags": [],
+        "description": "",
+        "summary": "",
+        "operationId": "users_query",
         "parameters": [],
         "responses": {
           "200": {
@@ -79,7 +89,10 @@
     },
     "/users-limit": {
       "get": {
-        "operationId": "usersLimitQuery",
+        "tags": [],
+        "description": "",
+        "summary": "",
+        "operationId": "usersLimit_query",
         "parameters": [
           {
             "in": "query",
@@ -110,7 +123,10 @@
     },
     "/users-sort": {
       "get": {
-        "operationId": "usersSortQuery",
+        "tags": [],
+        "description": "",
+        "summary": "",
+        "operationId": "usersSort_query",
         "parameters": [
           {
             "in": "query",
@@ -140,7 +156,10 @@
     },
     "/book/{id}": {
       "get": {
-        "operationId": "bookQuery",
+        "tags": [],
+        "description": "",
+        "summary": "",
+        "operationId": "book_query",
         "parameters": [
           {
             "in": "path",
@@ -167,7 +186,10 @@
     },
     "/books": {
       "get": {
-        "operationId": "booksQuery",
+        "tags": [],
+        "description": "",
+        "summary": "",
+        "operationId": "books_query",
         "parameters": [],
         "responses": {
           "200": {
@@ -188,7 +210,10 @@
     },
     "/never": {
       "get": {
-        "operationId": "neverQuery",
+        "tags": [],
+        "description": "",
+        "summary": "",
+        "operationId": "never_query",
         "parameters": [],
         "responses": {
           "200": {
@@ -206,11 +231,14 @@
     },
     "/feed": {
       "get": {
-        "operationId": "feedQuery",
+        "tags": [],
+        "description": "",
+        "summary": "",
+        "operationId": "feed_query",
         "parameters": [
           {
             "in": "query",
-            "name": "feedCommentsFilter",
+            "name": "feed_comments_filter",
             "required": true,
             "schema": {
               "type": "string"
@@ -236,7 +264,10 @@
     },
     "/add-book": {
       "post": {
-        "operationId": "addBookMutation",
+        "tags": [],
+        "description": "",
+        "summary": "",
+        "operationId": "addBook_mutation",
         "requestBody": {
           "content": {
             "application/json": {
@@ -247,7 +278,9 @@
                     "type": "string"
                   }
                 },
-                "required": ["title"]
+                "required": [
+                  "title"
+                ]
               }
             }
           }
@@ -271,7 +304,9 @@
     "schemas": {
       "Pizza": {
         "type": "object",
-        "required": ["dough"],
+        "required": [
+          "dough"
+        ],
         "properties": {
           "dough": {
             "type": "string"
@@ -286,7 +321,9 @@
       },
       "Salad": {
         "type": "object",
-        "required": ["ingredients"],
+        "required": [
+          "ingredients"
+        ],
         "properties": {
           "ingredients": {
             "type": "array",
@@ -298,7 +335,11 @@
       },
       "Book": {
         "type": "object",
-        "required": ["id", "title", "type"],
+        "required": [
+          "id",
+          "title",
+          "type"
+        ],
         "properties": {
           "id": {
             "type": "string"
@@ -308,7 +349,10 @@
           },
           "type": {
             "type": "string",
-            "enum": ["AUDIO", "LEGACY"]
+            "enum": [
+              "AUDIO",
+              "LEGACY"
+            ]
           }
         }
       },

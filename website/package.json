@@ -1,16 +1,28 @@
 {
+  "name": "website",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
   "scripts": {
-    "prestart": "yarn build:animation",
-    "start": "docusaurus-start",
-    "prebuild": "yarn build:animation",
-    "build": "docusaurus-build",
-    "version": "docusaurus-version",
-    "rename-version": "docusaurus-rename-version",
-    "build:animation": "rm -rf static/animation && cd animation && yarn && npm run build && cp -r ./build ../static/animation",
-    "predeploy": "yarn build:animation",
-    "deploy": "docusaurus-publish"
+    "build": "next build && next-sitemap --config next-sitemap.config.cjs && next export",
+    "dev": "next",
+    "start": "next start"
+  },
+  "dependencies": {
+    "lottie-web": "5.11.0",
+    "@theguild/components": "4.5.10",
+    "next": "13.3.2",
+    "next-sitemap": "4.0.7",
+    "react": "18.2.0",
+    "react-dom": "18.2.0"
   },
   "devDependencies": {
-    "docusaurus": "1.14.7"
+    "@theguild/algolia": "1.1.6",
+    "@theguild/tailwind-config": "0.2.1",
+    "@types/node": "18.16.3",
+    "@types/react": "18.2.0",
+    "postcss-import": "15.1.0",
+    "tailwindcss": "3.3.2",
+    "typescript": "5.0.4"
   }
 }

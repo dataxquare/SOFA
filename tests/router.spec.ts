@@ -1,7 +1,6 @@
-import { makeExecutableSchema } from '@graphql-tools/schema';
-import supertest from 'supertest';
-import express from 'express';
-import bodyParser from 'body-parser';
+import { Response } from '@whatwg-node/router';
+import { GraphQLError } from 'graphql';
+import { createSchema } from 'graphql-yoga';
 import { useSofa } from '../src';
 
 test('should work with Query and variables', async () => {
@@ -12,7 +11,7 @@ test('should work with Query and variables', async () => {
   const spy = jest.fn(() => testUser);
   const sofa = useSofa({
     basePath: '/api',
-    schema: makeExecutableSchema({
+    schema: createSchema({
       typeDefs: /* GraphQL */ `
         type User {
           id: ID
@@ -30,12 +29,10 @@ test('should work with Query and variables', async () => {
     }),
   });
 
-  const app = express();
-  app.use(bodyParser.json());
-  app.use('/api', sofa);
-
-  const res = await supertest(app).get('/api/user/test-id').expect(200);
-  expect(res.body).toEqual(testUser);
+  const res = await sofa.fetch('http://localhost:4000/api/user/test-id');
+  expect(res.status).toBe(200);
+  const resBody = await res.json();
+  expect(resBody).toEqual(testUser);
   expect((spy.mock.calls[0] as any[])[1]).toEqual({ id: 'test-id' });
 });
 
@@ -44,7 +41,7 @@ test('should work with Mutation', async () => {
   const spy = jest.fn(() => ({ __typename: 'Pizza', ...pizza }));
   const sofa = useSofa({
     basePath: '/api',
-    schema: makeExecutableSchema({
+    schema: createSchema({
       typeDefs: /* GraphQL */ `
         type Pizza {
           dough: String!
@@ -69,12 +66,12 @@ test('should work with Mutation', async () => {
     }),
   });
 
-  const app = express();
-  app.use(bodyParser.json());
-  app.use('/api', sofa);
-
-  const res = await supertest(app).post('/api/add-random-food').expect(200);
-  expect(res.body).toEqual(pizza);
+  const res = await sofa.fetch('http://localhost:4000/api/add-random-food', {
+    method: 'POST',
+  });
+  expect(res.status).toBe(200);
+  const resBody = await res.json();
+  expect(resBody).toEqual(pizza);
   expect((spy.mock.calls[0] as any[])[1]).toEqual({});
 });
 
@@ -83,7 +80,7 @@ test('should work with Mutation + Query', async () => {
   const spy = jest.fn(() => ({ __typename: 'Pizza', query: {}, ...pizza }));
   const sofa = useSofa({
     basePath: '/api',
-    schema: makeExecutableSchema({
+    schema: createSchema({
       typeDefs: /* GraphQL */ `
         type Pizza {
           dough: String!
@@ -111,13 +108,15 @@ test('should work with Mutation + Query', async () => {
     }),
   });
 
-  const app = express();
-  app.use(bodyParser.json());
-  app.use('/api', sofa);
-
-  const res = await supertest(app).post('/api/add-random-food?name=test').expect(200);
-  expect(res.body).toEqual(pizza);
-  expect((spy.mock.calls[0] as any[])[1]).toEqual({ name: "test" });
+  const res = await sofa.fetch(
+    'http://localhost:4000/api/add-random-food?name=test',
+    {
+      method: 'POST',
+    }
+  );
+  const resBody = await res.json();
+  expect(resBody).toEqual(pizza);
+  expect((spy.mock.calls[0] as any[])[1]).toEqual({ name: 'test' });
 });
 
 test('should overwrite a default http method on demand', async () => {
@@ -133,7 +132,7 @@ test('should overwrite a default http method on demand', async () => {
 
   const sofa = useSofa({
     basePath: '/api',
-    schema: makeExecutableSchema({
+    schema: createSchema({
       typeDefs: /* GraphQL */ `
         input PageInfoInput {
           offset: Int
@@ -168,28 +167,30 @@ test('should overwrite a default http method on demand', async () => {
     },
   });
 
-  const app = express();
-  app.use(bodyParser.json());
-  app.use('/api', sofa);
-
   const params = {
     pageInfo: {
       limit: 5,
     },
   };
 
-  const queryRes = await supertest(app)
-    .post('/api/users')
-    .send(params)
-    .expect(200);
-  expect(queryRes.body).toEqual(users);
+  const queryRes = await sofa.fetch('http://localhost:4000/api/users', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
+  expect(queryRes.status).toBe(200);
+  const queryResBody = await queryRes.json();
+  expect(queryResBody).toEqual(users);
   expect((spy.mock.calls[0] as any[])[1]).toEqual(params);
 
-  const mutationRes = await supertest(app)
-    .get('/api/add-random-user')
-    .send()
-    .expect(200);
-  expect(mutationRes.body).toEqual(users[0]);
+  const mutationRes = await sofa.fetch(
+    'http://localhost:4000/api/add-random-user',
+    {
+      method: 'GET',
+    }
+  );
+  expect(mutationRes.status).toBe(200);
+  const mutationResBody = await mutationRes.json();
+  expect(mutationResBody).toEqual(users[0]);
 });
 
 test('should overwrite a default path and responseStatus on demand', async () => {
@@ -202,7 +203,7 @@ test('should overwrite a default path and responseStatus on demand', async () =>
   const spy = jest.fn(() => users);
   const sofa = useSofa({
     basePath: '/api',
-    schema: makeExecutableSchema({
+    schema: createSchema({
       typeDefs: /* GraphQL */ `
         type User {
           id: ID
@@ -223,12 +224,10 @@ test('should overwrite a default path and responseStatus on demand', async () =>
     },
   });
 
-  const app = express();
-  app.use(bodyParser.json());
-  app.use('/api', sofa);
-
-  const queryRes = await supertest(app).get(`/api/my-users/2/5`).expect(201);
-  expect(queryRes.body).toEqual(users);
+  const queryRes = await sofa.fetch('http://localhost:4000/api/my-users/2/5');
+  expect(queryRes.status).toBe(201);
+  const queryResBody = await queryRes.json();
+  expect(queryResBody).toEqual(users);
   expect(spy).lastCalledWith(
     /* source */ undefined,
     /* args */ { offset: 2, limit: 5 },
@@ -238,32 +237,28 @@ test('should overwrite a default path and responseStatus on demand', async () =>
 });
 
 test('should work with scalars', async () => {
-  const app = express();
-
-  app.use(bodyParser.json());
-  app.use(
-    '/api',
-    useSofa({
-      basePath: '/api',
-      schema: makeExecutableSchema({
-        typeDefs: /* GraphQL */ `
-          type Query {
-            foo: String
-          }
-        `,
-        resolvers: {
-          Query: {
-            foo() {
-              return 'bar';
-            },
+  const sofa = useSofa({
+    basePath: '/api',
+    schema: createSchema({
+      typeDefs: /* GraphQL */ `
+        type Query {
+          foo: String
+        }
+      `,
+      resolvers: {
+        Query: {
+          foo() {
+            return 'bar';
           },
         },
-      }),
-    })
-  );
+      },
+    }),
+  });
 
-  const res = await supertest(app).get('/api/foo').send().expect(200);
-  expect(res.body).toEqual('bar');
+  const res = await sofa.fetch('http://localhost:4000/api/foo');
+  expect(res.status).toBe(200);
+  const resBody = await res.json();
+  expect(resBody).toEqual('bar');
 });
 
 test('should support search params in url', async () => {
@@ -277,7 +272,7 @@ test('should support search params in url', async () => {
 
   const sofa = useSofa({
     basePath: '/api',
-    schema: makeExecutableSchema({
+    schema: createSchema({
       typeDefs: /* GraphQL */ `
         type User {
           id: ID
@@ -295,16 +290,364 @@ test('should support search params in url', async () => {
     }),
   });
 
-  const app = express();
-  app.use(bodyParser.json());
-  app.use('/api', sofa);
-
-  const res = await supertest(app).get('/api/users?count=5').expect(200);
-  expect(res.body).toEqual(users);
+  const res = await sofa.fetch('http://localhost:4000/api/users?count=5');
+  expect(res.status).toBe(200);
+  const resBody = await res.json();
+  expect(resBody).toEqual(users);
   expect(spy).lastCalledWith(
     /* source */ undefined,
     /* args */ { count: 5 },
     /* context */ expect.anything(),
     /* info */ expect.anything()
   );
+});
+
+test('should return errors as json', async () => {
+  const sofa = useSofa({
+    basePath: '/api',
+    schema: createSchema({
+      typeDefs: /* GraphQL */ `
+        type Query {
+          foo: String!
+          bar: String!
+        }
+      `,
+      resolvers: {
+        Query: {
+          foo: () => {
+            throw new GraphQLError('permission denied', {
+              extensions: { code: 'PERMISSION_DENIED' },
+            });
+          },
+        },
+      },
+    }),
+  });
+
+  const res = await sofa.fetch('http://localhost:4000/api/foo');
+  expect(res.status).toBe(500);
+  const resBody = await res.json();
+  expect(resBody).toEqual({
+    errors: [
+      {
+        message: 'permission denied',
+        path: ['foo'],
+        extensions: { code: 'PERMISSION_DENIED' },
+      }
+    ],
+  });
+});
+
+test('should override error response with errorHandler', async () => {
+  const sofa = useSofa({
+    basePath: '/api',
+    schema: createSchema({
+      typeDefs: /* GraphQL */ `
+        type Query {
+          foo: String!
+          bar: String!
+        }
+      `,
+      resolvers: {
+        Query: {
+          foo: () => {
+            throw new GraphQLError('permission denied', {
+              extensions: { code: 'PERMISSION_DENIED' },
+            });
+          },
+        },
+      },
+    }),
+    errorHandler(errs) {
+      const body = JSON.stringify({ message: errs[0].message });
+      let status = 500;
+      if (
+        errs[0] instanceof GraphQLError &&
+        errs[0].extensions.code === 'PERMISSION_DENIED'
+      ) {
+        status = 403;
+      }
+      return new Response(body, { status });
+    },
+  });
+
+  const res = await sofa.fetch('http://localhost:4000/api/foo');
+  expect(res.status).toBe(403);
+  const resBody = await res.json();
+  expect(resBody).toEqual({ message: 'permission denied' });
+});
+
+test('should respect http error extensions', async () => {
+  const sofa = useSofa({
+    basePath: '/api',
+    schema: createSchema({
+      typeDefs: /* GraphQL */ `
+        type Query {
+          foo: String!
+          bar: String!
+        }
+      `,
+      resolvers: {
+        Query: {
+          foo: () => {
+            throw new GraphQLError('permission denied', {
+              extensions: {
+                code: 'PERMISSION_DENIED',
+                http: { status: 403, headers: { 'x-foo': 'bar' } },
+              },
+            });
+          },
+        },
+      },
+    }),
+  });
+
+  const res = await sofa.fetch('http://localhost:4000/api/foo');
+  expect(res.status).toBe(403);
+  expect(res.headers.get('x-foo')).toBe('bar');
+  const resBody = await res.json();
+  expect(resBody).toEqual({
+    errors: [
+      {
+        message: 'permission denied',
+        path: ['foo'],
+        extensions: {
+          code: 'PERMISSION_DENIED',
+        },
+      }
+    ],
+  });
+});
+
+it('should pass field descriptions to onRoute', () => {
+  const spy = jest.fn();
+  useSofa({
+    basePath: '/api',
+    schema: createSchema({
+      typeDefs: /* GraphQL */ `
+        type Query {
+          """
+          this is query
+          """
+          foo: String
+        }
+        type Mutation {
+          """
+          this is mutation
+          """
+          bar(arg1: Int): String
+        }
+      `,
+    }),
+    onRoute: spy,
+  });
+
+  expect(spy).toBeCalledTimes(2);
+  expect(spy.mock.calls[0][0].description).toEqual('this is query');
+  expect(spy.mock.calls[1][0].description).toEqual('this is mutation');
+});
+
+test('primitive true boolean in requests should be handled as true', async () => {
+  const spyMutation = jest.fn();
+  const spyQuery = jest.fn();
+  const sofa = useSofa({
+    basePath: '/api',
+    schema: createSchema({
+      typeDefs: /* GraphQL */ `
+        type Query {
+          bar(arg2: Boolean): String
+        }
+        type Mutation {
+          foo(arg1: Boolean): String
+        }
+      `,
+      resolvers: {
+        Mutation: {
+          foo: spyMutation,
+        },
+        Query: {
+          bar: spyQuery,
+        },
+      },
+    }),
+  });
+
+  await sofa.fetch('http://localhost:4000/api/foo', {
+    method: 'POST',
+    body: JSON.stringify({ arg1: true }),
+  });
+  expect(spyMutation).toBeCalledWith(
+    /* source */ undefined,
+    /* args */ { arg1: true },
+    /* context */ expect.anything(),
+    /* info */ expect.anything()
+  );
+
+  await sofa.fetch('http://localhost:4000/api/bar?arg2=true');
+  expect(spyQuery).toBeCalledWith(
+    /* source */ undefined,
+    /* args */ { arg2: true },
+    /* context */ expect.anything(),
+    /* info */ expect.anything()
+  );
+});
+
+test('should overwrite field descriptions', () => {
+  const spy = jest.fn();
+  useSofa({
+    basePath: '/api',
+    schema: createSchema({
+      typeDefs: /* GraphQL */ `
+        type Query {
+          """
+          this is query
+          """
+          foo: String
+        }
+        type Mutation {
+          """
+          this is mutation
+          """
+          bar(arg1: Int): String
+        }
+      `,
+    }),
+    onRoute: spy,
+    routes: {
+      'Query.foo': { description: 'this is overwrited query description' },
+      'Mutation.bar': {
+        description: 'this is overwrited mutation description',
+      },
+    },
+  });
+
+  expect(spy).toBeCalledTimes(2);
+  expect(spy.mock.calls[0][0].description).toEqual(
+    'this is overwrited query description'
+  );
+  expect(spy.mock.calls[1][0].description).toEqual(
+    'this is overwrited mutation description'
+  );
+});
+
+test('should work with Query and nested models', async () => {
+  const testUser = {
+    id: 'test-id',
+    name: 'Test User',
+    org: {
+      id: 'test-org',
+    },
+  };
+  const spy = jest.fn(() => testUser);
+  const sofa = useSofa({
+    basePath: '/api',
+    schema: createSchema({
+      typeDefs: /* GraphQL */ `
+        type Org {
+          id: ID
+          name: String
+        }
+        type User {
+          id: ID
+          name: String
+          org: Org
+        }
+        type Query {
+          user(id: ID!): User
+          users: [User]
+          org(id: ID!): Org
+          orgs: [Org]
+          orgByName(name: String!): Org
+        }
+      `,
+      resolvers: {
+        Query: {
+          user: spy,
+        },
+      },
+    }),
+  });
+
+  const res = await sofa.fetch('http://localhost:4000/api/user/test-id');
+  expect(res.status).toBe(200);
+  const resBody = await res.json();
+  expect(resBody).toEqual(testUser);
+  expect((spy.mock.calls[0] as any[])[1]).toEqual({ id: 'test-id' });
+});
+
+test('should catch json parsing errors on query params and return Bad Request/400 error', async () => {
+  const spy = jest.fn();
+  const sofa = useSofa({
+    basePath: '/api',
+    schema: createSchema({
+      typeDefs: /* GraphQL */ `
+        type Query {
+          """
+          this is query
+          """
+          foo(arg1: Int): String
+        }
+        type Mutation {
+          """
+          this is mutation
+          """
+          bar(arg1: Int): String
+        }
+      `,
+    }),
+    onRoute: spy,
+  });
+
+  const res = await sofa.fetch('http://localhost:4000/api/foo?arg1=notanumber');
+  expect(res.status).toBe(400);
+  const resBody = await res.json();
+  expect(resBody).toEqual({
+    errors: [
+      {
+        message: 'Int cannot represent non-integer value: "notanumber"',
+      }
+    ]
+  });
+});
+
+test('should catch json parsing errors on request body and return Bad Request/400 error', async () => {
+  const spy = jest.fn();
+
+  const sofa = useSofa({
+    basePath: '/api',
+    schema: createSchema({
+      typeDefs: /* GraphQL */ `
+        type Query {
+          """
+          this is query
+          """
+          foo(arg1: Int): String
+        }
+        type Mutation {
+          """
+          this is mutation
+          """
+          bar(arg1: Int): String
+        }
+      `,
+    }),
+    onRoute: spy,
+  });
+
+  const res = await sofa.fetch(
+    'http://localhost:4000/api/bar?arg1=notanumber',
+    {
+      method: 'POST',
+      body: JSON.stringify({ count: 'notanumber' }),
+    }
+  );
+  expect(res.status).toBe(400);
+  const resBody = await res.json();
+  expect(resBody).toEqual({
+    errors: [
+      {
+        message: 'Int cannot represent non-integer value: "notanumber"',
+      }
+    ]
+  });
 });

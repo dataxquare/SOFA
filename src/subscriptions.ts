@@ -1,13 +1,11 @@
 import {
-  subscribe,
   DocumentNode,
   VariableDefinitionNode,
   ExecutionResult,
   Kind,
   OperationTypeNode,
 } from 'graphql';
-import { v4 as uuid } from 'uuid';
-import { fetch } from 'cross-undici-fetch';
+import { fetch, crypto } from '@whatwg-node/fetch';
 import { buildOperationNodeForField } from '@graphql-tools/utils';
 import type { ContextValue } from './types';
 import type { Sofa } from './sofa';
@@ -75,16 +73,14 @@ export class SubscriptionManager {
 
   public async start(
     event: StartSubscriptionEvent,
-    contextValue: ContextValue
+    contextValue: ContextValue,
   ) {
-    const id = uuid();
+    const id = crypto.randomUUID();
     const name = event.subscription;
 
     if (!this.operations.has(name)) {
       throw new Error(`Subscription '${name}' is not available`);
     }
-
-    const { document, operationName, variables } = this.operations.get(name)!;
 
     logger.info(`[Subscription] Start ${id}`, event);
 
@@ -92,9 +88,7 @@ export class SubscriptionManager {
       id,
       name,
       url: event.url,
-      document,
-      operationName,
-      variables,
+      variables: event.variables,
       contextValue,
     });
 
@@ -125,7 +119,7 @@ export class SubscriptionManager {
 
   public async update(
     event: UpdateSubscriptionEvent,
-    contextValue: ContextValue
+    contextValue: ContextValue,
   ) {
     const { variables, id } = event;
 
@@ -145,28 +139,25 @@ export class SubscriptionManager {
         subscription,
         variables,
       },
-      contextValue
+      contextValue,
     );
   }
 
   private async execute({
     id,
-    document,
     name,
     url,
-    operationName,
     variables,
     contextValue,
   }: {
     id: ID;
     name: SubscriptionFieldName;
     url: string;
-    document: DocumentNode;
-    operationName: string;
     variables: Record<string, any>;
     contextValue: ContextValue;
   }) {
-    const variableNodes = this.operations.get(name)!.variables;
+    const { document, operationName, variables: variableNodes } = this.operations.get(name)!;
+
     const variableValues = variableNodes.reduce((values, variable) => {
       const value = parseVariable({
         value: variables[variable.variable.name.value],
@@ -180,11 +171,11 @@ export class SubscriptionManager {
 
       return {
         ...values,
-        [name]: value,
+        [variable.variable.name.value]: value,
       };
     }, {});
 
-    const execution = await subscribe({
+    const execution = await this.sofa.subscribe({
       schema: this.sofa.schema,
       document,
       operationName,
@@ -240,8 +231,8 @@ export class SubscriptionManager {
       body: JSON.stringify(result),
       headers: {
         'Content-Type': 'application/json',
-      }
-    })
+      },
+    });
     await response.text();
   }
 

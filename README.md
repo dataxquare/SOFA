@@ -20,47 +20,14 @@ Here's complete example with no dependency on frameworks, but also integratable 
 ```js
 import http from 'http';
 import getStream from 'get-stream';
-import { createSofaRouter } from 'sofa-api';
+import { useSofa } from 'sofa-api';
 
-const invokeSofa = createSofaRouter({
-  basePath: '/api',
-  schema,
-});
-
-const server = http.createServer(async (req, res) => {
-  try {
-    const response = await invokeSofa({
-      method: req.method,
-      url: req.url,
-      body: JSON.parse(await getStream(req)),
-      contextValue: {
-        req,
-      },
-    });
-    if (response) {
-      const headers = {
-        'Content-Type': 'application/json',
-      };
-      if (response.statusMessage) {
-        res.writeHead(response.status, response.statusMessage, headers);
-      } else {
-        res.writeHead(response.status, headers);
-      }
-      if (response.type === 'result') {
-        res.end(JSON.stringify(response.body));
-      }
-      if (response.type === 'error') {
-        res.end(JSON.stringify(response.error));
-      }
-    } else {
-      res.writeHead(404);
-      res.end();
-    }
-  } catch (error) {
-    res.writeHead(500);
-    res.end(JSON.stringify(error));
-  }
-});
+const server = http.createServer(
+  useSofa({
+    basePath: '/api',
+    schema,
+  })
+);
 ```
 
 Another example with builtin express-like frameworks support
@@ -183,7 +150,7 @@ Sofa allows you to cutomize the http method, path and response status. For examp
 ```typescript
 api.use(
   '/api',
-  sofa({
+  useSofa({
     schema,
     routes: {
       'Query.feed': { method: 'POST' },
@@ -302,6 +269,7 @@ Thanks to GraphQL's Type System Sofa is able to generate OpenAPI (Swagger) defin
 
 ```ts
 import { useSofa, OpenAPI } from 'sofa-api';
+import { writeFileSync } from 'fs';
 
 const openApi = OpenAPI({
   schema,
@@ -325,13 +293,14 @@ app.use(
 );
 
 // writes every recorder route
-openApi.save('./swagger.yml');
+writeFileSync('./swagger.json', JSON.stringify(openApi.get(), null, 2));
 ```
 
 OpenAPI (Swagger) with Bearer Authentication
 
 ```ts
 import { useSofa, OpenAPI } from 'sofa-api';
+import { writeFileSync } from 'fs';
 
 const openApi = OpenAPI({
   schema,
@@ -368,6 +337,66 @@ app.use(
   })
 );
 
+// writes every recorder route
+writeFileSync('./swagger.json', JSON.stringify(openApi.get(), null, 2));
+```
+
+OpenAPI (Swagger) with custom tags, summary and description
+
+```ts
+const openApi = OpenAPI({
+  schema,
+  info: {
+    title: 'Example API',
+    version: '3.0.0',
+  },
+    tags: [
+        {
+            name: 'Book',
+            description: 'Book related operations',
+        },
+        {
+            name: 'Author',
+            description: 'Author related operations',
+        },
+    ],
+});
+```
+
+```ts
+@Resolver(Book)
+export class BookResolver {
+    @Query(() => Book, { description: 'Get book by id' }) // custom summary tag
+    getBookById(@Arg('id', () => Int) id: number) {
+        return 'book';
+    }
+}
+```
+
+```ts
+const routes: SofaConfig['routes'] = {
+    'Query.getBookById': {
+        method: 'POST',
+        path: '/book/:id',
+        tags: ['Book'],
+        description: 'This is a custom detailed description for getBookById',
+    },
+}
+
+const createSofaMiddleware = (
+    schema: GraphQLSchema,
+    openApi: ReturnType<typeof OpenAPI>,
+    basePath = ''
+): ReturnType<typeof useSofa> => {
+    return useSofa({
+        routes,
+        basePath,
+        schema,
+        onRoute(info) {
+            openApi.addRoute(info, { basePath });
+        },
+    });
+};
 // writes every recorder route
 openApi.save('./swagger.yml');
 ```

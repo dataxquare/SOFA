@@ -1,46 +1,75 @@
 import {
   DocumentNode,
-  GraphQLSchema,
-  VariableDefinitionNode,
-  TypeNode,
-  OperationDefinitionNode,
-  ObjectTypeDefinitionNode,
   FieldNode,
+  GraphQLSchema,
+  isEnumType,
+  Kind,
+  ObjectTypeDefinitionNode,
+  OperationDefinitionNode,
   parse,
   printType,
-  Kind,
+  TypeNode,
+  VariableDefinitionNode,
 } from 'graphql';
 
 import { getOperationInfo } from '../ast';
 import { mapToPrimitive, mapToRef } from './utils';
 import { resolveFieldType } from './types';
 import { titleCase } from 'title-case';
+import { OpenAPIV3 } from 'openapi-types';
 
 export function buildPathFromOperation({
   url,
   schema,
   operation,
   useRequestBody,
-  tags
+  tags,
+  description,
+  customScalars,
 }: {
   url: string;
   schema: GraphQLSchema;
   operation: DocumentNode;
   useRequestBody: boolean;
   tags?: string[];
-}): any {
+  description?: string;
+  customScalars: Record<string, any>;
+}): OpenAPIV3.OperationObject {
   const info = getOperationInfo(operation)!;
+  const enumTypes = resolveEnumTypes(schema);
 
-  const description = resolveDescription(schema, info.operation);
+  const summary = resolveDescription(schema, info.operation);
+  const variables = info.operation.variableDefinitions;
+  const pathParams = variables?.filter((variable: any) =>
+    isInPath(url, variable.variable.name.value)
+  );
+  const bodyParams = variables?.filter(
+    (variable: any) => !isInPath(url, variable.variable.name.value)
+  );
 
   return {
+    tags,
+    description,
+    summary,
     operationId: info.name,
     ...(useRequestBody
       ? {
+          parameters: resolveParameters(
+            url,
+            pathParams,
+            schema,
+            info.operation,
+            { customScalars, enumTypes }
+          ),
           requestBody: {
             content: {
               'application/json': {
-                schema: resolveRequestBody(info.operation.variableDefinitions),
+                schema: resolveRequestBody(
+                  bodyParams,
+                  schema,
+                  info.operation,
+                  { customScalars, enumTypes }
+                ),
               },
             },
           },
@@ -48,21 +77,21 @@ export function buildPathFromOperation({
       : {
           parameters: resolveParameters(
             url,
-            info.operation.variableDefinitions,
+            variables,
             schema,
-            info.operation
+            info.operation,
+            { customScalars, enumTypes }
           ),
         }),
-    description,
-    tags,
     responses: {
       200: {
-        description: "OK",
+        description: summary,
         content: {
           'application/json': {
             schema: resolveResponse({
               schema,
               operation: info.operation,
+              opts: { customScalars, enumTypes },
             }),
           },
         },
@@ -71,11 +100,26 @@ export function buildPathFromOperation({
   };
 }
 
+function resolveEnumTypes(schema: GraphQLSchema): Record<string, any> {
+  const enumTypes = Object.values(schema.getTypeMap())
+    .filter(isEnumType)
+  return Object.fromEntries(
+    enumTypes.map((type) => [
+      type.name,
+      {
+        type: 'string',
+        enum: type.getValues().map((value) => value.name),
+      },
+    ])
+  );
+}
+
 function resolveParameters(
   url: string,
   variables: ReadonlyArray<VariableDefinitionNode> | undefined,
   schema: GraphQLSchema,
   operation: OperationDefinitionNode,
+  opts: { customScalars: Record<string, any>; enumTypes: Record<string, any> }
 ) {
   if (!variables) {
     return [];
@@ -86,14 +130,17 @@ function resolveParameters(
       in: isInPath(url, variable.variable.name.value) ? 'path' : 'query',
       name: variable.variable.name.value,
       required: variable.type.kind === Kind.NON_NULL_TYPE,
-      schema: resolveParamSchema(variable.type),
+      schema: resolveParamSchema(variable.type, opts),
       description: resolveVariableDescription(schema, operation, variable),
     };
   });
 }
 
 function resolveRequestBody(
-  variables: ReadonlyArray<VariableDefinitionNode> | undefined
+  variables: ReadonlyArray<VariableDefinitionNode> | undefined,
+  schema: GraphQLSchema,
+  operation: OperationDefinitionNode,
+  opts: { customScalars: Record<string, any>; enumTypes: Record<string, any> }
 ) {
   if (!variables) {
     return {};
@@ -102,14 +149,15 @@ function resolveRequestBody(
   const properties: Record<string, any> = {};
   const required: string[] = [];
 
-  variables.forEach(variable => {
+  variables.forEach((variable) => {
     if (variable.type.kind === Kind.NON_NULL_TYPE) {
       required.push(variable.variable.name.value);
     }
 
-    properties[variable.variable.name.value] = resolveParamSchema(
-      variable.type
-    );
+    properties[variable.variable.name.value] = {
+      ...resolveParamSchema(variable.type, opts),
+      description: resolveVariableDescription(schema, operation, variable),
+    };
   });
 
   return {
@@ -122,33 +170,38 @@ function resolveRequestBody(
 // array -> [type]
 // type -> $ref
 // scalar -> swagger primitive
-function resolveParamSchema(type: TypeNode): any {
+function resolveParamSchema(
+  type: TypeNode,
+  opts: { customScalars: Record<string, any>; enumTypes: Record<string, any> }
+): any {
   if (type.kind === Kind.NON_NULL_TYPE) {
-    return resolveParamSchema(type.type);
+    return resolveParamSchema(type.type, opts);
   }
 
   if (type.kind === Kind.LIST_TYPE) {
     return {
       type: 'array',
-      items: resolveParamSchema(type.type),
+      items: resolveParamSchema(type.type, opts),
     };
   }
 
   const primitive = mapToPrimitive(type.name.value);
 
   return (
-    primitive || {
-      $ref: mapToRef(type.name.value),
-    }
+    primitive ||
+    opts.customScalars[type.name.value] ||
+    opts.enumTypes[type.name.value] || { $ref: mapToRef(type.name.value) }
   );
 }
 
 function resolveResponse({
   schema,
   operation,
+  opts,
 }: {
   schema: GraphQLSchema;
   operation: OperationDefinitionNode;
+  opts: { customScalars: Record<string, any>; enumTypes: Record<string, any> };
 }) {
   const operationType = operation.operation;
   const rootField = operation.selectionSet.selections[0];
@@ -158,14 +211,14 @@ function resolveResponse({
       const queryType = schema.getQueryType()!;
       const field = queryType.getFields()[rootField.name.value];
 
-      return resolveFieldType(field.type);
+      return resolveFieldType(field.type, opts);
     }
 
     if (operationType === 'mutation') {
       const mutationType = schema.getMutationType()!;
       const field = mutationType.getFields()[rootField.name.value];
 
-      return resolveFieldType(field.type);
+      return resolveFieldType(field.type, opts);
     }
   }
 }
@@ -193,11 +246,7 @@ function getOperationFieldNode(
     return undefined;
   }
 
-  const fieldNode = definitionNode.fields!.find(
-    field => field.name.value === fieldName
-  );
-
-  return fieldNode;
+  return definitionNode.fields!.find((field) => field.name.value === fieldName);
 }
 
 function resolveDescription(
@@ -205,11 +254,7 @@ function resolveDescription(
   operation: OperationDefinitionNode
 ) {
   const fieldNode = getOperationFieldNode(schema, operation);
-  const descriptionDefinition = fieldNode && fieldNode.description;
-
-  return descriptionDefinition && descriptionDefinition.value
-    ? descriptionDefinition.value
-    : '';
+  return fieldNode?.description?.value || '';
 }
 
 function resolveVariableDescription(
