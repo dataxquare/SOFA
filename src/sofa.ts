@@ -21,6 +21,8 @@ import { ErrorHandler } from './router';
 // - execute function
 // - context
 
+type ExecuteHooks = ({ contextValue }: { contextValue?: unknown }) => Promise<void>;
+
 interface RouteConfig {
   method?: Method;
   path?: string;
@@ -55,8 +57,8 @@ export interface SofaConfig {
   routes?: Record<string, RouteConfig>;
   context?: ContextFn | ContextValue;
   /** Pre/Post execute hooks */
-  preExecute?: typeof execute;
-  postExecute?: typeof execute;
+  preExecute?: ExecuteHooks;
+  postExecute?: ExecuteHooks;
 }
 
 export interface Sofa {
@@ -71,8 +73,8 @@ export interface Sofa {
   onRoute?: OnRoute;
   errorHandler?: ErrorHandler;
   contextFactory: ContextFn;
-  preExecute?: typeof execute;
-  postExecute?: typeof execute;
+  preExecute?: ExecuteHooks;
+  postExecute?: ExecuteHooks;
 }
 
 export function createSofa(config: SofaConfig): Sofa {

@@ -379,13 +379,7 @@ function useHandler(config: {
       const contextValue = await sofa.contextFactory(sofaContext);
 
       if(sofa.preExecute) {
-        await sofa.preExecute({
-          schema: sofa.schema,
-          document: operation,
-          contextValue,
-          variableValues,
-          operationName: info.operation.name && info.operation.name.value,
-        });
+        await sofa.preExecute({ contextValue });
       }
 
       const result = await sofa.execute({
@@ -397,13 +391,7 @@ function useHandler(config: {
       });
 
       if(sofa.postExecute) {
-        await sofa.postExecute({
-          schema: sofa.schema,
-          document: operation,
-          contextValue,
-          variableValues,
-          operationName: info.operation.name && info.operation.name.value,
-        });
+        await sofa.postExecute({ contextValue });
       }
 
       if (result.errors) {
