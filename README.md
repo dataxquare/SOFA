@@ -350,52 +350,52 @@ const openApi = OpenAPI({
     title: 'Example API',
     version: '3.0.0',
   },
-    tags: [
-        {
-            name: 'Book',
-            description: 'Book related operations',
-        },
-        {
-            name: 'Author',
-            description: 'Author related operations',
-        },
-    ],
+  tags: [
+    {
+      name: 'Book',
+      description: 'Book related operations',
+    },
+    {
+      name: 'Author',
+      description: 'Author related operations',
+    },
+  ],
 });
 ```
 
 ```ts
 @Resolver(Book)
 export class BookResolver {
-    @Query(() => Book, { description: 'Get book by id' }) // custom summary tag
-    getBookById(@Arg('id', () => Int) id: number) {
-        return 'book';
-    }
+  @Query(() => Book, { description: 'Get book by id' }) // custom summary tag
+  getBookById(@Arg('id', () => Int) id: number) {
+    return 'book';
+  }
 }
 ```
 
 ```ts
 const routes: SofaConfig['routes'] = {
-    'Query.getBookById': {
-        method: 'POST',
-        path: '/book/:id',
-        tags: ['Book'],
-        description: 'This is a custom detailed description for getBookById',
-    },
-}
+  'Query.getBookById': {
+    method: 'POST',
+    path: '/book/:id',
+    tags: ['Book'],
+    description: 'This is a custom detailed description for getBookById',
+  },
+};
 
 const createSofaMiddleware = (
-    schema: GraphQLSchema,
-    openApi: ReturnType<typeof OpenAPI>,
-    basePath = ''
+  schema: GraphQLSchema,
+  openApi: ReturnType<typeof OpenAPI>,
+  basePath = ''
 ): ReturnType<typeof useSofa> => {
-    return useSofa({
-        routes,
-        basePath,
-        schema,
-        onRoute(info) {
-            openApi.addRoute(info, { basePath });
-        },
-    });
+  return useSofa({
+    routes,
+    basePath,
+    schema,
+    onRoute(info) {
+      openApi.addRoute(info, { basePath });
+    },
+  });
 };
 // writes every recorder route
 openApi.save('./swagger.yml');

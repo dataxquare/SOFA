@@ -10,10 +10,12 @@ import {
   execute,
 } from 'graphql';
 
-import { Ignore, OnRoute, Method, ContextFn, ContextValue } from './types';
+import { Ignore, ContextFn, ContextValue } from './types';
 import { convertName } from './common';
 import { logger } from './logger';
 import { ErrorHandler } from './router';
+import { HTTPMethod, StatusCode } from 'fets/typings/typed-fetch';
+import { RouterOpenAPIOptions, RouterSwaggerUIOptions } from 'fets';
 
 // user passes:
 // - schema
@@ -23,19 +25,19 @@ import { ErrorHandler } from './router';
 
 type ExecuteHooks = ({ contextValue }: { contextValue?: unknown }) => Promise<void>;
 
-interface RouteConfig {
-  method?: Method;
+export interface RouteConfig {
+  method?: HTTPMethod;
   path?: string;
-  responseStatus?: number;
+  responseStatus?: StatusCode;
   tags?: string[];
   pathPrefix?: string;
   description?: string;
 }
 
 export interface Route {
-  method: Method;
+  method: HTTPMethod;
   path: string;
-  responseStatus: number;
+  responseStatus: StatusCode;
 }
 
 export interface SofaConfig {
@@ -48,7 +50,6 @@ export interface SofaConfig {
    * @example ["User", "Message.author"]
    */
   ignore?: Ignore;
-  onRoute?: OnRoute;
   depthLimit?: number;
   errorHandler?: ErrorHandler;
   /**
@@ -56,6 +57,12 @@ export interface SofaConfig {
    */
   routes?: Record<string, RouteConfig>;
   context?: ContextFn | ContextValue;
+  customScalars?: Record<string, any>;
+  enumTypes?: Record<string, any>;
+  
+  openAPI?: RouterOpenAPIOptions<any>;
+  swaggerUI?: RouterSwaggerUIOptions;
+
   /** Pre/Post execute hooks */
   preExecute?: ExecuteHooks;
   postExecute?: ExecuteHooks;
@@ -70,9 +77,14 @@ export interface Sofa {
   routes?: Record<string, RouteConfig>;
   execute: typeof execute;
   subscribe: typeof subscribe;
-  onRoute?: OnRoute;
   errorHandler?: ErrorHandler;
   contextFactory: ContextFn;
+  customScalars: Record<string, any>
+  enumTypes: Record<string, any>
+
+  openAPI?: RouterOpenAPIOptions<any>;
+  swaggerUI?: RouterSwaggerUIOptions;
+
   preExecute?: ExecuteHooks;
   postExecute?: ExecuteHooks;
 }
@@ -103,6 +115,8 @@ export function createSofa(config: SofaConfig): Sofa {
       }
       return serverContext;
     },
+    customScalars: config.customScalars || {},
+    enumTypes: config.enumTypes || {},
     ...config,
   };
 }
